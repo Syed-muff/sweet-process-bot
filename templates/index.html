@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fusion AI Tutorial Assistant</title>
+    <!-- PDF.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 20px;
+            color: #fff;
+        }
+
+        /* Main Container */
+        #main-container {
+            display: flex;
+            flex-direction: row;
+            width: 90%;
+            margin-top: 20px;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        /* Chat Container */
+        #chat-container {
+            background: #1c1c1c;
+            border: 1px solid;
+            border-image-slice: 1;
+            border-image-source: linear-gradient(135deg, #6a0dad, #1e90ff);
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            flex: 1;
+            max-height: 85vh;
+            position: relative;
+        }
+
+        #chat-container h2 {
+            text-align: center;
+            margin: 0;
+            padding: 10px 0;
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        /* PDF Upload Section */
+        #pdf-upload-container {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #pdf-upload-container input[type="file"] {
+            display: none;
+        }
+
+        #upload-label {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #6a0dad, #1e90ff);
+            border: none;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+
+        #upload-label:hover {
+            background: linear-gradient(135deg, #1e90ff, #6a0dad);
+        }
+
+        /* Chat Messages */
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 10px;
+            padding-right: 10px;
+        }
+
+        #chat p, #chat pre {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        #chat p {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ddd;
+        }
+
+        #chat pre {
+            background: rgba(28, 28, 28, 1);
+            color: #fff;
+            border: 1px solid #6a0dad;
+            padding: 15px;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            white-space: pre-wrap;
+        }
+
+        /* User Input */
+        #user-input-container {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            background: rgba(18, 18, 18, 0.8);
+            color: #fff;
+            border: 1px solid #6a0dad;
+            border-radius: 8px 0 0 8px;
+            outline: none;
+        }
+
+        #send-button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #6a0dad, #1e90ff);
+            border: none;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 0 8px 8px 0;
+            transition: background 0.3s;
+        }
+
+        #send-button:hover {
+            background: linear-gradient(135deg, #1e90ff, #6a0dad);
+        }
+
+        /* Toggle Recommendations Button */
+        #toggle-recommendations {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #6a0dad, #1e90ff);
+            border: none;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            text-align: center;
+            transition: background 0.3s;
+        }
+
+        #toggle-recommendations:hover {
+            background: linear-gradient(135deg, #1e90ff, #6a0dad);
+        }
+
+        /* Recommended Questions Overlay */
+        #recommended-overlay {
+            margin-top: 10px;
+            background: rgba(28, 28, 28, 0.9);
+            color: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.6);
+            display: none;
+        }
+
+        #recommended-overlay h3 {
+            margin: 0;
+            color: #6a0dad;
+            text-align: center;
+        }
+
+        #recommended-questions {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0;
+        }
+
+        #recommended-questions li {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #recommended-questions li:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* PDF Container */
+        #pdf-container {
+            background: #1c1c1c;
+            border: 1px solid;
+            border-image-slice: 1;
+            border-image-source: linear-gradient(135deg, #6a0dad, #1e90ff);
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            flex: 1;
+            max-height: 85vh;
+            position: relative; /* Needed for positioning hover elements */
+        }
+
+        /* PDF Canvas */
+        #pdf-canvas {
+            border: 1px solid black;
+            width: 100%;
+            height: auto; /* Ensure the canvas height scales proportionally */
+            max-height: 87vh; /* Limit height to leave space for controls */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+        }
+
+        /* Navigation Arrows */
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 3rem;
+            color: #fff;
+            cursor: pointer;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s, color 0.3s;
+            padding: 10px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+        }
+
+        #arrow-left {
+            left: 10px;
+        }
+
+        #arrow-right {
+            right: 10px;
+        }
+
+        /* Page Number Display */
+        #page-display {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 8px 12px;
+            border-radius: 8px;
+            background-color: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s, background-color 0.3s;
+            cursor: default;
+        }
+
+        /* Show navigation arrows and page number on hover over arrows or page number */
+        .nav-arrow:hover,
+        #page-display:hover {
+            opacity: 1;
+            color: #1e90ff; /* Change to blue on hover */
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        /* Keep arrows and page number visible when hovering over either */
+        #arrow-left:hover ~ #page-display,
+        #arrow-right:hover ~ #page-display,
+        #page-display:hover ~ .nav-arrow {
+            opacity: 1;
+            color: #1e90ff;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        /* Increase clickable area for arrows */
+        .nav-arrow {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Loading Container */
+        #loading-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        #loading-gif {
+            width: 120px;
+            height: 120px;
+        }
+
+        /* Powered By Text */
+        #powered-by {
+            position: fixed;
+            bottom: 5px;
+            right: 5px;
+            background: linear-gradient(135deg, #6a0dad, #1e90ff); /* Gradient Background */
+            -webkit-background-clip: text; /* For Safari and Chrome */
+            -webkit-text-fill-color: transparent; /* For Safari and Chrome */
+            background-clip: text; /* Standard Property */
+            color: transparent; /* Makes the text transparent to show the background */
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            #main-container {
+                flex-direction: column;
+                width: 95%;
+            }
+
+            .nav-arrow {
+                font-size: 2rem;
+                width: 40px;
+                height: 40px;
+            }
+
+            #page-display {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h2>Fusion AI Tutorial Assistant</h2>
+    <div id="main-container">
+        <!-- Chat Container -->
+        <div id="chat-container">
+            <h2>Chat</h2>
+            
+            <!-- PDF Upload Section -->
+            <div id="pdf-upload-container">
+                <label for="pdf-upload" id="upload-label">Upload PDF</label>
+                <input type="file" id="pdf-upload" accept="application/pdf" onchange="uploadPdf()" />
+            </div>
+
+            <div id="chat"></div>
+            <div id="user-input-container">
+                <input
+                    type="text"
+                    id="user-input"
+                    placeholder="Ask your question"
+                    onkeydown="handleEnterKey(event)"
+                />
+                <button id="send-button" onclick="sendMessage()">Send</button>
+            </div>
+            <button id="toggle-recommendations" onclick="toggleRecommendations()">Show Recommended Questions</button>
+            <div id="recommended-overlay">
+                <h3>Recommended Questions</h3>
+                <ul id="recommended-questions"></ul>
+            </div>
+        </div>
+
+        <!-- PDF Container -->
+        <div id="pdf-container">
+            <canvas id="pdf-canvas"></canvas>
+
+            <!-- Navigation Arrows -->
+            <div id="arrow-left" class="nav-arrow" onclick="prevPage()">
+                &#8592; <!-- Left Arrow -->
+            </div>
+            <div id="arrow-right" class="nav-arrow" onclick="nextPage()">
+                &#8594; <!-- Right Arrow -->
+            </div>
+
+            <!-- Page Number Display -->
+            <div id="page-display">
+                <span id="current-page">1</span> / <span id="total-pages">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Powered By Text -->
+    <div id="powered-by">Powered by FUSION AI</div>
+
+    <!-- Loading Indicator -->
+    <div id="loading-container">
+        <img id="loading-gif" src="https://d1585q1wairh36.cloudfront.net/assets/Animations/loader.gif" alt="Loading..." />
+    </div>
+
+    <script>
+        // Function to handle Enter key press in the input field
+        function handleEnterKey(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+                event.preventDefault();
+            }
+        }
+
+        // Function to toggle the display of recommended questions
+        function toggleRecommendations() {
+            const overlay = document.getElementById("recommended-overlay");
+            if (overlay.style.display === "block") {
+                overlay.style.display = "none";
+            } else {
+                overlay.style.display = "block";
+            }
+        }
+
+        // Initialize PDF.js
+        let pdfDoc = null;
+        let currentPage = 1;
+        let totalPages = 0;
+        const scale = 1.5; // Zoom level
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Function to render a specific page of the PDF
+        function renderPage(pageNumber) {
+            if (!pdfDoc) return;
+
+            pdfDoc.getPage(pageNumber).then((page) => {
+                const viewport = page.getViewport({ scale });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport,
+                };
+                page.render(renderContext);
+            });
+
+            // Update the current page number display
+            document.getElementById('current-page').textContent = pageNumber;
+        }
+
+        // Function to load a PDF document
+        function loadPdf(pdfPath, pageNumber = 1) {
+            console.log(`Loading PDF from path: ${pdfPath}, Page: ${pageNumber}`);
+            const loadingTask = pdfjsLib.getDocument(pdfPath);
+            loadingTask.promise.then((pdf) => {
+                pdfDoc = pdf;
+                totalPages = pdf.numPages;
+                document.getElementById('total-pages').textContent = totalPages;
+
+                // Render the specified page
+                currentPage = pageNumber;
+                renderPage(currentPage);
+            }).catch((error) => {
+                console.error("Error loading PDF:", error);
+                alert("Failed to load the document.");
+            });
+        }
+
+        // Function to go to the previous page
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage(currentPage);
+            }
+        }
+
+        // Function to go to the next page
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderPage(currentPage);
+            }
+        }
+
+        // Function to send a message to the server and handle the response
+        async function sendMessage() {
+            const userInput = document.getElementById("user-input").value;
+
+            if (!userInput.trim()) {
+                alert("Please enter a question!");
+                return;
+            }
+
+            // Show the loading indicator
+            document.getElementById("loading-container").style.display = "flex";
+
+            try {
+                const response = await fetch("/api", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_input: userInput }),
+                });
+
+                const data = await response.json();
+                const chatDiv = document.getElementById("chat");
+
+                // Hide the loading indicator
+                document.getElementById("loading-container").style.display = "none";
+
+                if (data.answer) {
+                    // Display user input
+                    chatDiv.innerHTML += `<p><b>You:</b> ${sanitize(userInput)}</p>`;
+
+                    // Display AI's answer
+                    chatDiv.innerHTML += `<pre><b>AI:</b> ${sanitize(data.answer)}</pre>`;
+
+                    // Load the PDF if a path is provided
+                    if (data.pdf_path) {
+                        // Use the sanitized filename returned by the backend
+                        const encodedPdfPath = encodeURI(data.pdf_path);
+                        console.log(`Encoded PDF path: ${encodedPdfPath}`);
+                        loadPdf(encodedPdfPath, data.page || 1);
+                    }
+
+                    // Display recommended questions
+                    const recommendedContainer = document.getElementById("recommended-questions");
+                    recommendedContainer.innerHTML = ""; // Clear previous recommendations
+                    if (data.recommended_questions && data.recommended_questions.length > 0) {
+                        data.recommended_questions.forEach((question) => {
+                            const questionElement = document.createElement("li");
+                            questionElement.textContent = question;
+                            questionElement.onclick = () => {
+                                document.getElementById("user-input").value = question;
+                                sendMessage();
+                            };
+                            recommendedContainer.appendChild(questionElement);
+                        });
+                    }
+                } else {
+                    alert(data.error || "An error occurred while processing your request.");
+                }
+            } catch (error) {
+                // Hide the loading indicator
+                document.getElementById("loading-container").style.display = "none";
+                alert("An unexpected error occurred. Please try again later.");
+                console.error(error);
+            }
+
+            // Clear the input field
+            document.getElementById("user-input").value = "";
+        }
+
+        // Function to upload a PDF
+        async function uploadPdf() {
+            const fileInput = document.getElementById("pdf-upload");
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("No file selected.");
+                return;
+            }
+
+            // Show the loading indicator
+            document.getElementById("loading-container").style.display = "flex";
+
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            try {
+                const response = await fetch("/api/upload", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                // Hide the loading indicator
+                document.getElementById("loading-container").style.display = "none";
+
+                if (response.ok) {
+                    alert("PDF uploaded successfully!");
+                    console.log("PDF uploaded successfully:", `/uploads/${encodeURIComponent(data.filename)}`);
+                    // Load the PDF immediately using the sanitized filename
+                    loadPdf(`/uploads/${encodeURIComponent(data.filename)}`, 1);
+                } else {
+                    alert(data.error || "Failed to upload PDF.");
+                }
+            } catch (error) {
+                // Hide the loading indicator
+                document.getElementById("loading-container").style.display = "none";
+                alert("An unexpected error occurred while uploading the PDF.");
+                console.error(error);
+            }
+        }
+
+        // Helper function to sanitize user input and prevent XSS
+        function sanitize(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
+
+        // Initialize the PDF viewer on page load (optional)
+        window.onload = function() {
+            // Optionally, load a default PDF or leave it empty
+            // Example: loadPdf('/uploads/your-default.pdf', 1);
+        };
+    </script>
+</body>
+</html>
