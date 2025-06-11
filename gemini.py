@@ -1,7 +1,9 @@
 import time
 import google.generativeai as genai
+import os
 
-genai.configure(api_key="AIzaSyAIiDR4psalcm9WhVdXl313M4RuzKFsFiU")
+api_key = os.getenv("GOOGLE_API_KEY", "")
+genai.configure(api_key)
 generation_config = {
     "temperature": 0.0,
     "top_p": 0.95,
